@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Chouettr — Prémaquette</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #0B0014;
+    --deep: #14052A;
+    --violet: #7C3AED;
+    --pink: #EC4899;
+    --yellow: #FBBF24;
+    --lime: #C6F432;
+    --cyan: #22D3EE;
+    --white: #FFF8F0;
+    --muted: #A89FBE;
+    --line: #2A1A4A;
+    --night-soft: rgba(11, 0, 20, 0.92);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; font-family: 'Inter', -apple-system, sans-serif; color: var(--white); background: var(--night); overflow: hidden; }
+
+  /* ---------- HEADER ---------- */
+  header {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 1000;
+    padding: 14px 16px 12px;
+    background: linear-gradient(180deg, rgba(11,0,20,0.95) 0%, rgba(11,0,20,0.75) 70%, transparent 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    pointer-events: none;
+  }
+  header > * { pointer-events: auto; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; }
+  .brand-logo {
+    width: 32px; height: 32px;
+    background: var(--yellow);
+    border-radius: 50%;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .brand-logo::before, .brand-logo::after {
+    content: ''; position: absolute;
+    width: 0; height: 0;
+    top: -4px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 10px solid var(--yellow);
+  }
+  .brand-logo::before { left: 4px; transform: rotate(-12deg); }
+  .brand-logo::after { right: 4px; transform: rotate(12deg); }
+  .brand-eye-l, .brand-eye-r {
+    position: absolute; top: 10px;
+    width: 8px; height: 8px;
+    background: var(--white);
+    border-radius: 50%;
+  }
+  .brand-eye-l { left: 6px; }
+  .brand-eye-r { right: 6px; }
+  .brand-eye-l::after, .brand-eye-r::after {
+    content: ''; position: absolute;
+    width: 4px; height: 4px;
+    background: var(--night);
+    border-radius: 50%;
+    top: 2px; left: 2px;
+  }
+  .brand-beak {
+    position: absolute; left: 50%; bottom: 8px;
+    width: 0; height: 0;
+    transform: translateX(-50%);
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+    border-top: 5px solid var(--pink);
+  }
+  .brand-name { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.02em; }
+  .brand-dot { color: var(--pink); }
+  .reset-pill {
+    background: rgba(124, 58, 237, 0.18);
+    border: 1px solid rgba(124, 58, 237, 0.4);
+    color: var(--white);
+    font-size: 11px; font-weight: 500;
+    padding: 5px 10px; border-radius: 100px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .reset-pill::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--lime);
+    box-shadow: 0 0 8px var(--lime);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+
+  /* ---------- FILTER PILLS ---------- */
+  .filters {
+    display: flex; gap: 8px; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 0 4px;
+    scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .filter-pill {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    background: rgba(20, 5, 42, 0.85);
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    border-radius: 100px;
+    color: var(--white);
+    font-size: 12px; font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-pill.active {
+    background: var(--yellow);
+    border-color: var(--yellow);
+    color: var(--night);
+    font-weight: 600;
+  }
+  .filter-pill:active { transform: scale(0.96); }
+
+  /* ---------- MAP ---------- */
+  #map {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--night);
+    z-index: 1;
+  }
+
+  /* Custom Leaflet dark theme tweaks */
+  .leaflet-container { background: var(--night) !important; font-family: 'Inter', sans-serif; }
+  .leaflet-control-attribution {
+    background: rgba(11,0,20,0.6) !important;
+    color: var(--muted) !important;
+    font-size: 9px !important;
+  }
+  .leaflet-control-attribution a { color: var(--cyan) !important; }
+
+  /* Custom marker (hibou) */
+  .owl-marker {
+    width: 44px; height: 44px;
+    position: relative;
+    cursor: pointer;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+  }
+  .owl-marker .body {
+    width: 36px; height: 36px;
+    background: var(--yellow);
+    border-radius: 50%;
+    position: absolute;
+    top: 4px; left: 4px;
+    border: 2px solid var(--night);
+  }
+  .owl-marker .tuft-l, .owl-marker .tuft-r {
+    position: absolute; top: 0;
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 10px solid var(--yellow);
+  }
+  .owl-marker .tuft-l { left: 8px; transform: rotate(-12deg); }
+  .owl-marker .tuft-r { right: 8px; transform: rotate(12deg); }
+  .owl-marker .eye-l, .owl-marker .eye-r {
+    position: absolute; top: 14px;
+    width: 9px; height: 9px;
+    background: var(--white); border-radius: 50%;
+  }
+  .owl-marker .eye-l { left: 10px; }
+  .owl-marker .eye-r { right: 10px; }
+  .owl-marker .eye-l::after, .owl-marker .eye-r::after {
+    content: ''; position: absolute;
+    width: 4px; height: 4px;
+    background: var(--night); border-radius: 50%;
+    top: 2.5px; left: 2.5px;
+  }
+  .owl-marker .beak {
+    position: absolute; left: 50%; bottom: 7px;
+    width: 0; height: 0;
+    transform: translateX(-50%);
+    border-left: 3px solid transparent;
+    border-right: 3px solid transparent;
+    border-top: 6px solid var(--pink);
+  }
+  .owl-marker.hot .body {
+    box-shadow: 0 0 0 4px rgba(198, 244, 50, 0.45),
+                0 0 20px rgba(198, 244, 50, 0.6);
+    animation: hot 2.4s ease-in-out infinite;
+  }
+  @keyframes hot {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(198, 244, 50, 0.45), 0 0 20px rgba(198, 244, 50, 0.6); }
+    50% { box-shadow: 0 0 0 6px rgba(198, 244, 50, 0.65), 0 0 32px rgba(198, 244, 50, 0.9); }
+  }
+  .owl-marker .score-pill {
+    position: absolute; bottom: -10px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--lime);
+    color: var(--night);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    border: 2px solid var(--night);
+    white-space: nowrap;
+  }
+  .owl-marker.cool .score-pill { background: var(--cyan); }
+  .owl-marker.warm .score-pill { background: var(--yellow); }
+  .owl-marker.cold .score-pill { background: var(--muted); color: var(--white); }
+
+  /* ---------- BOTTOM SHEET ---------- */
+  .sheet-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 998;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .sheet-backdrop.open { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    z-index: 999;
+    background: var(--night);
+    border-top-left-radius: 24px; border-top-right-radius: 24px;
+    transform: translateY(100%);
+    transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 88vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 -10px 40px rgba(124, 58, 237, 0.3);
+  }
+  .sheet.open { transform: translateY(0); }
+  .sheet-handle {
+    width: 40px; height: 4px;
+    background: var(--muted);
+    opacity: 0.5;
+    margin: 12px auto 0;
+    border-radius: 2px;
+  }
+  .sheet-hero {
+    height: 180px;
+    position: relative;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .sheet-hero-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+  }
+  .sheet-hero::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(11,0,20,0.4) 60%, var(--night) 100%);
+  }
+  .sheet-hero .live-badge {
+    position: absolute; top: 16px; left: 16px;
+    background: var(--pink);
+    color: var(--white);
+    font-size: 10px; font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 100px;
+    letter-spacing: 0.06em;
+    display: flex; align-items: center; gap: 6px;
+    z-index: 2;
+  }
+  .sheet-hero .live-badge::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--white);
+    animation: pulse 1.4s infinite;
+  }
+  .sheet-hero .close-btn {
+    position: absolute; top: 16px; right: 16px;
+    width: 32px; height: 32px;
+    background: rgba(11,0,20,0.7);
+    border: 1px solid rgba(255,248,240,0.2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--white);
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 2;
+  }
+  .sheet-body { padding: 0 20px 32px; }
+  .sheet-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px; font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-top: -32px;
+    position: relative; z-index: 2;
+  }
+  .sheet-meta-line {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 4px;
+    display: flex; align-items: center; gap: 6px;
+    flex-wrap: wrap;
+  }
+  .sheet-meta-line .dot { opacity: 0.5; }
+  .place-rating {
+    color: var(--muted);
+    font-size: 12px;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .place-rating .stars { color: var(--yellow); font-size: 10px; }
+
+  .tonight-card {
+    margin-top: 18px;
+    padding: 18px;
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.18) 0%, rgba(236, 72, 153, 0.12) 100%);
+    border: 1px solid rgba(124, 58, 237, 0.4);
+    border-radius: 16px;
+  }
+  .tonight-label {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--lime);
+    margin-bottom: 8px;
+  }
+  .tonight-score-row {
+    display: flex; align-items: baseline; gap: 12px;
+  }
+  .tonight-score {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 56px; font-weight: 700;
+    color: var(--white);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+  .tonight-score .of {
+    color: var(--muted);
+    font-size: 22px;
+    font-weight: 500;
+  }
+  .tonight-votes { color: var(--muted); font-size: 12px; }
+
+  .badges-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 18px;
+  }
+  .badge {
+    padding: 6px 12px;
+    background: rgba(20, 5, 42, 0.85);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    font-size: 12px; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .badge.dj {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.4);
+    color: var(--yellow);
+  }
+  .badge.music {
+    background: rgba(34, 211, 238, 0.10);
+    border-color: rgba(34, 211, 238, 0.35);
+    color: var(--cyan);
+  }
+  .badge.entry {
+    background: rgba(198, 244, 50, 0.10);
+    border-color: rgba(198, 244, 50, 0.35);
+    color: var(--lime);
+  }
+
+  .section-h {
+    margin-top: 24px; margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .section-h h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .section-h .count {
+    font-size: 11px; color: var(--muted);
+  }
+
+  /* Photos grid (live community) */
+  .photos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .photo-tile {
+    aspect-ratio: 1;
+    background-size: cover; background-position: center;
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .photo-tile.video::after {
+    content: '▶';
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 28px; height: 28px;
+    background: rgba(11, 0, 20, 0.7);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--white);
+    font-size: 11px;
+    backdrop-filter: blur(4px);
+  }
+  .photo-tile .when {
+    position: absolute; bottom: 6px; left: 6px;
+    background: rgba(11, 0, 20, 0.6);
+    color: var(--white);
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+  }
+
+  .empty-grid {
+    padding: 24px;
+    background: rgba(20, 5, 42, 0.4);
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* Socials */
+  .socials-row { display: flex; gap: 8px; margin-top: 12px; }
+  .social-btn {
+    flex: 1;
+    padding: 10px;
+    background: rgba(20, 5, 42, 0.85);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    text-align: center;
+    color: var(--white);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+
+  /* CTA fixe en bas du sheet */
+  .sheet-cta-bar {
+    position: sticky; bottom: 0; left: 0; right: 0;
+    margin: 24px -20px -32px;
+    padding: 16px 20px 24px;
+    background: linear-gradient(180deg, transparent 0%, var(--night) 30%);
+  }
+  .cta-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--lime);
+    color: var(--night);
+    border: none;
+    border-radius: 100px;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .cta-btn:active { transform: scale(0.98); }
+  .cta-btn .arrow { font-size: 18px; }
+  .cta-btn-row {
+    display: flex; gap: 8px;
+  }
+  .cta-btn-row .cta-btn { flex: 1; }
+  .cta-btn.outline {
+    background: transparent;
+    color: var(--white);
+    border: 1px solid var(--line);
+  }
+
+  /* ---------- INFO CHIP (footer hint) ---------- */
+  .footer-hint {
+    position: fixed; bottom: 16px; left: 16px; right: 16px;
+    z-index: 500;
+    background: rgba(20, 5, 42, 0.92);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--white);
+    display: flex; align-items: center; gap: 10px;
+    pointer-events: none;
+  }
+  .footer-hint .hibou-mini {
+    width: 22px; height: 22px;
+    background: var(--yellow);
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .footer-hint .hibou-mini::after {
+    content: '👀'; position: absolute;
+    inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+
+  /* iOS notch / safe area */
+  @supports (padding: max(0px)) {
+    header { padding-top: max(14px, env(safe-area-inset-top)); }
+    .sheet-cta-bar { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+    .footer-hint { bottom: max(16px, env(safe-area-inset-bottom)); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo">
+        <div class="brand-eye-l"></div>
+        <div class="brand-eye-r"></div>
+        <div class="brand-beak"></div>
+      </div>
+      <span class="brand-name">chouettr<span class="brand-dot">.</span></span>
+    </div>
+    <div class="reset-pill" id="resetPill">Live · reset 06h00</div>
+  </div>
+  <div class="filters">
+    <div class="filter-pill active" data-filter="all">Tous (6)</div>
+    <div class="filter-pill" data-filter="club">Clubs</div>
+    <div class="filter-pill" data-filter="bar">Bars</div>
+    <div class="filter-pill" data-filter="rooftop">Rooftops</div>
+    <div class="filter-pill" data-filter="live">Live</div>
+    <div class="filter-pill" data-filter="cocktail">Cocktails</div>
+  </div>
+</header>
+
+<div id="map"></div>
+
+<div class="footer-hint" id="footerHint">
+  <div class="hibou-mini"></div>
+  <div>
+    Le hibou voit du mouvement à <strong>La Plumée</strong> — nouvelle reco perso à 23h17.
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div id="sheetContent"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+  // -----------------------------------------------------------------
+  // DATA — 6 bars Aix-en-Provence (1 inventé : La Plumée)
+  // -----------------------------------------------------------------
+  const BARS = [
+    {
+      id: 'plumee',
+      name: 'La Plumée',
+      type: 'cocktail',
+      typeLabel: 'Cocktail · cave',
+      lat: 43.5275, lng: 5.4470,
+      placeRating: 4.6,
+      tonight: 9.2,
+      tonightVotes: 142,
+      vibe: 'hot',
+      music: 'Soul · funk · rare grooves',
+      dj: 'DJ Plume',
+      entry: 'Entrée libre',
+      address: '14 rue Mistral · Aix-en-Provence',
+      insta: '@laplumee.aix',
+      tiktok: '@laplumee',
+      hero: linearGradient('#7C3AED', '#EC4899', '#FBBF24'),
+      photos: 6,
+      isInvented: true
+    },
+    {
+      id: 'korigan',
+      name: 'Le Korigan',
+      type: 'club',
+      typeLabel: 'Club · techno',
+      lat: 43.5290, lng: 5.4395,
+      placeRating: 4.3,
+      tonight: 8.7,
+      tonightVotes: 234,
+      vibe: 'hot',
+      music: 'Techno · hard groove',
+      dj: 'YAMA b2b PAUL BRTN',
+      entry: '15€ · 23h30',
+      address: 'ZAC Pioline · Aix-en-Provence',
+      insta: '@korigan.club',
+      tiktok: '@korigan',
+      hero: linearGradient('#0B0014', '#7C3AED', '#EC4899'),
+      photos: 9
+    },
+    {
+      id: 'sextius',
+      name: 'Rooftop Sextius',
+      type: 'rooftop',
+      typeLabel: 'Rooftop · house',
+      lat: 43.5305, lng: 5.4498,
+      placeRating: 4.5,
+      tonight: 7.4,
+      tonightVotes: 67,
+      vibe: 'warm',
+      music: 'Deep house · disco',
+      dj: 'SOLENE L.',
+      entry: 'Entrée libre · résa conseillée',
+      address: '12 thermes Sextius · Aix-en-Provence',
+      insta: '@rooftop.sextius',
+      tiktok: null,
+      hero: linearGradient('#22D3EE', '#7C3AED', '#0B0014'),
+      photos: 4
+    },
+    {
+      id: 'bistrot',
+      name: 'Le Bistrot du Cours',
+      type: 'bar',
+      typeLabel: 'Bar étudiant',
+      lat: 43.5258, lng: 5.4485,
+      placeRating: 4.0,
+      tonight: 6.8,
+      tonightVotes: 89,
+      vibe: 'warm',
+      music: 'Variétés · pop',
+      dj: null,
+      entry: 'Conso 6€',
+      address: 'Cours Mirabeau · Aix-en-Provence',
+      insta: '@lebistrotducours',
+      tiktok: null,
+      hero: linearGradient('#FBBF24', '#EC4899', '#7C3AED'),
+      photos: 3
+    },
+    {
+      id: 'chimere',
+      name: 'La Chimère',
+      type: 'live',
+      typeLabel: 'Bar · live music',
+      lat: 43.5240, lng: 5.4440,
+      placeRating: 4.4,
+      tonight: 7.9,
+      tonightVotes: 51,
+      vibe: 'cool',
+      music: 'Jazz · funk live',
+      dj: 'Quartet Lemoine',
+      entry: 'Conso + 5€ artistes',
+      address: '6 rue Espariat · Aix-en-Provence',
+      insta: '@lachimere.aix',
+      tiktok: null,
+      hero: linearGradient('#22D3EE', '#0B0014', '#7C3AED'),
+      photos: 2
+    },
+    {
+      id: 'brut',
+      name: 'Cellar Brut',
+      type: 'cocktail',
+      typeLabel: 'Speakeasy',
+      lat: 43.5230, lng: 5.4510,
+      placeRating: 4.7,
+      tonight: 5.9,
+      tonightVotes: 22,
+      vibe: 'cold',
+      music: 'Lounge · downtempo',
+      dj: null,
+      entry: 'Conso 14€',
+      address: '3 rue Cardinale · Aix-en-Provence',
+      insta: '@cellarbrut',
+      tiktok: null,
+      hero: linearGradient('#14052A', '#7C3AED', '#0B0014'),
+      photos: 0
+    }
+  ];
+
+  function linearGradient(...colors) {
+    return `linear-gradient(135deg, ${colors.join(', ')})`;
+  }
+
+  // -----------------------------------------------------------------
+  // MAP — Leaflet + tile dark. CartoDB Voyager Dark style en fallback.
+  // -----------------------------------------------------------------
+  const map = L.map('map', {
+    zoomControl: false,
+    attributionControl: false
+  }).setView([43.5263, 5.4454], 15);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png', {
+    attribution: '© OSM · CartoDB',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(map);
+
+  L.control.attribution({ position: 'bottomright' }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+
+  // Custom owl marker
+  function makeOwlMarker(bar) {
+    const vibeClass = bar.vibe || 'warm';
+    const html = `
+      <div class="owl-marker ${vibeClass}">
+        <div class="tuft-l"></div>
+        <div class="tuft-r"></div>
+        <div class="body"></div>
+        <div class="eye-l"></div>
+        <div class="eye-r"></div>
+        <div class="beak"></div>
+        <div class="score-pill">${bar.tonight.toFixed(1)}</div>
+      </div>
+    `;
+    return L.divIcon({
+      html, className: '', iconSize: [44, 56], iconAnchor: [22, 50]
+    });
+  }
+
+  const markers = {};
+  BARS.forEach(bar => {
+    const m = L.marker([bar.lat, bar.lng], { icon: makeOwlMarker(bar) }).addTo(map);
+    m.on('click', () => openSheet(bar));
+    markers[bar.id] = { marker: m, bar };
+  });
+
+  // -----------------------------------------------------------------
+  // FILTERS
+  // -----------------------------------------------------------------
+  document.querySelectorAll('.filter-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const filter = pill.dataset.filter;
+      Object.values(markers).forEach(({ marker, bar }) => {
+        const show = filter === 'all' || bar.type === filter;
+        if (show) {
+          marker.addTo(map);
+        } else {
+          map.removeLayer(marker);
+        }
+      });
+    });
+  });
+
+  // -----------------------------------------------------------------
+  // BOTTOM SHEET
+  // -----------------------------------------------------------------
+  const sheet = document.getElementById('sheet');
+  const backdrop = document.getElementById('sheetBackdrop');
+  const sheetContent = document.getElementById('sheetContent');
+
+  backdrop.addEventListener('click', closeSheet);
+
+  function openSheet(bar) {
+    sheetContent.innerHTML = renderBar(bar);
+    sheet.classList.add('open');
+    backdrop.classList.add('open');
+    sheet.scrollTop = 0;
+    sheet.querySelectorAll('.close-btn').forEach(b => b.addEventListener('click', closeSheet));
+  }
+  function closeSheet() {
+    sheet.classList.remove('open');
+    backdrop.classList.remove('open');
+  }
+
+  function stars(rating) {
+    const full = Math.round(rating);
+    return '★★★★★☆☆☆☆☆'.slice(5 - full, 10 - full);
+  }
+
+  function vibePalette(vibe) {
+    return ({
+      hot:  ['#7C3AED', '#EC4899', '#FBBF24'],
+      warm: ['#FBBF24', '#EC4899', '#7C3AED'],
+      cool: ['#22D3EE', '#7C3AED', '#0B0014'],
+      cold: ['#14052A', '#7C3AED', '#0B0014']
+    })[vibe || 'warm'];
+  }
+
+  function renderPhotos(bar) {
+    if (bar.photos === 0) {
+      return `
+        <div class="empty-grid">
+          🦉 Personne n'a encore posté ce soir.<br>
+          <strong style="color: var(--lime);">Sois le premier — tu reçois +50 plumes.</strong>
+        </div>`;
+    }
+    const palettes = vibePalette(bar.vibe);
+    const minutes = ['il y a 4 min', 'il y a 12 min', 'il y a 28 min', 'il y a 47 min', 'il y a 1 h', 'il y a 1 h 23'];
+    let tiles = '';
+    for (let i = 0; i < bar.photos; i++) {
+      const isVideo = i % 3 === 1;
+      const c1 = palettes[i % palettes.length];
+      const c2 = palettes[(i + 1) % palettes.length];
+      const angle = 30 + (i * 47) % 180;
+      const bg = `linear-gradient(${angle}deg, ${c1}, ${c2})`;
+      tiles += `
+        <div class="photo-tile ${isVideo ? 'video' : ''}" style="background:${bg};">
+          <div class="when">${minutes[i % minutes.length]}</div>
+        </div>`;
+    }
+    return `<div class="photos-grid">${tiles}</div>`;
+  }
+
+  function renderBar(bar) {
+    const dj = bar.dj ? `<span class="badge dj">🎧 ${bar.dj}</span>` : '';
+    const tiktok = bar.tiktok
+      ? `<a class="social-btn" href="#" onclick="return false;">TikTok ${bar.tiktok}</a>` : '';
+    return `
+      <div class="sheet-hero">
+        <div class="sheet-hero-bg" style="background:${bar.hero};"></div>
+        <div class="live-badge">EN COURS</div>
+        <div class="close-btn">×</div>
+      </div>
+      <div class="sheet-body">
+        <h2 class="sheet-title">${bar.name}</h2>
+        <div class="sheet-meta-line">
+          <span>${bar.typeLabel}</span>
+          <span class="dot">·</span>
+          <span class="place-rating">
+            <span class="stars">${stars(bar.placeRating)}</span>
+            ${bar.placeRating.toFixed(1)} (lieu)
+          </span>
+          <span class="dot">·</span>
+          <span>${bar.address}</span>
+        </div>
+
+        <div class="tonight-card">
+          <div class="tonight-label">⚡ NOTE DE LA SOIRÉE — CE SOIR</div>
+          <div class="tonight-score-row">
+            <div class="tonight-score">${bar.tonight.toFixed(1)}<span class="of">/10</span></div>
+            <div class="tonight-votes">
+              ${bar.tonightVotes} avis<br>
+              <span style="color: var(--lime);">en direct</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="badges-row">
+          <span class="badge music">🎵 ${bar.music}</span>
+          ${dj}
+          <span class="badge entry">€ ${bar.entry}</span>
+        </div>
+
+        <div class="section-h">
+          <h3>📸 Posts ce soir</h3>
+          <span class="count">${bar.photos} médias · reset à 06h</span>
+        </div>
+        ${renderPhotos(bar)}
+
+        <div class="section-h">
+          <h3>🔗 Réseaux du bar</h3>
+        </div>
+        <div class="socials-row">
+          <a class="social-btn" href="#" onclick="return false;">Insta ${bar.insta}</a>
+          ${tiktok}
+        </div>
+
+        <div class="sheet-cta-bar">
+          <div class="cta-btn-row">
+            <button class="cta-btn outline" onclick="alert('Posté ! +20 plumes (démo)')">
+              📸 Poster
+            </button>
+            <button class="cta-btn" onclick="alert('Tu y vas ! Tes potes seront notifiés (démo)')">
+              <span>Y aller</span>
+              <span class="arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // -----------------------------------------------------------------
+  // RESET 06:00 — countdown affiché dans la pill
+  // -----------------------------------------------------------------
+  function updateResetPill() {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(6, 0, 0, 0);
+    if (now >= next) next.setDate(next.getDate() + 1);
+    const diff = next - now;
+    const hours = Math.floor(diff / 3600000);
+    const minutes = Math.floor((diff % 3600000) / 60000);
+    document.getElementById('resetPill').innerHTML = `Reset dans ${hours}h${String(minutes).padStart(2,'0')}`;
+  }
+  updateResetPill();
+  setInterval(updateResetPill, 30000);
+
+  // -----------------------------------------------------------------
+  // Footer hint cycle (rotates 3 messages)
+  // -----------------------------------------------------------------
+  const hints = [
+    `Le hibou voit du mouvement à <strong>La Plumée</strong> — nouvelle reco perso à 23h17.`,
+    `<strong>3 potes</strong> sont en route vers <strong>Le Korigan</strong> ce soir.`,
+    `Il reste <strong>4h12</strong> avant le reset — la nuit est encore jeune.`
+  ];
+  let hintIdx = 0;
+  setInterval(() => {
+    hintIdx = (hintIdx + 1) % hints.length;
+    document.getElementById('footerHint').children[1].innerHTML = hints[hintIdx];
+  }, 5000);
+</script>
+</body>
+</html>
